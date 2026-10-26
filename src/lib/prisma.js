@@ -1,13 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
-const { PrismaMariaDb } = require('@prisma/adapter-mariadb');
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const connectionString = process.env.DATABASE_URL;
+const adapter = new PrismaMariaDb(process.env.DATABASE_URL);
 
-if (!connectionString) {
-  throw new Error('A variável de ambiente DATABASE_URL não foi definida');
-}
-
-const adapter = new PrismaMariaDb(connectionString);
-const prisma = new PrismaClient({ adapter });
-
-module.exports = prisma;
+export default new PrismaClient({ adapter });
