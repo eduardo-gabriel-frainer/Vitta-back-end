@@ -16,10 +16,12 @@ app.use((req, res) => {
 
 app.use((error, req, res, next) => {
   console.error(error);
-  const status = error.status
-    || (error.code === 'P2002' ? 409 : ['P2000', 'P2003'].includes(error.code) ? 400 : 500);
-  res.status(status)
-    .json({ erro: 'Não foi possível processar a requisição' });
+
+  const erroUsuario = error.code === 'P2002'
+    ? 'Já existe um cadastro com esse nome'
+    : 'Não foi possível processar a requisição';
+
+  res.status(500).json({ erro: erroUsuario });
 });
 
 export default app;
