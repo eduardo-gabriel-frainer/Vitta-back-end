@@ -35,4 +35,48 @@ router.post('/', async (req, res) => {
   res.location(`/especialidades/${especialidade.id}`).status(201).json(especialidade);
 });
 
+router.put('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  const { nome } = req.body || {};
+  if (typeof nome !== 'string' || !nome.trim()) {
+    return res.status(400).json({ erro: 'Nome é obrigatório' });
+  }
+
+  const existente = await prisma.especialidade.findUnique({ where: { id } });
+  if (!existente) return res.status(404).json({ erro: 'Especialidade não encontrada' });
+
+  const especialidade = await prisma.especialidade.update({
+    where: { id },
+    data: { nome: nome.trim() },
+  });
+
+  res.json(especialidade);
+});
+
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  const especialidade = await prisma.especialidade.findUnique({ where: { id } });
+  if (!especialidade) return res.status(404).json({ erro: 'Especialidade não encontrada' });
+
+  const consultas = await prisma.consulta.count({ where: { especialidadeId: id } });
+  if (consultas > 0) {
+    return res.status(409).json({ erro: 'Especialidade possui consultas vinculadas' });
+  }
+
+  await prisma.$transaction([
+    prisma.profissionalEspecialidade.deleteMany({ where: { especialidadeId: id } }),
+    prisma.especialidade.delete({ where: { id } }),
+  ]);
+
+  res.status(204).send();
+});
+
 export default router;

@@ -97,4 +97,93 @@ router.post('/', async (req, res) => {
   res.location(`/consultas/${consulta.id}`).status(201).json(respostaConsulta(consulta));
 });
 
+router.put('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  const {
+    inicio_em,
+    fim_em,
+    observacoes,
+    status,
+    motivo_cancelamento,
+    cancelador_por,
+  } = req.body || {};
+
+  const inicioEm = new Date(`${inicio_em}`.replace(' ', 'T') + 'Z');
+  const fimEm = new Date(`${fim_em}`.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
+    return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
+  }
+  if (observacoes != null && typeof observacoes !== 'string') {
+    return res.status(400).json({ erro: 'Observações devem ser texto' });
+  }
+  if (status != null && !['agendada', 'cancelada'].includes(status)) {
+    return res.status(400).json({ erro: 'Status deve ser agendada ou cancelada' });
+  }
+
+  const consulta = await prisma.consulta.findFirst({ where: { id } });
+  if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
+
+  const hoje = new Date();
+  const atualizadoEm = new Date(Date.UTC(
+    hoje.getUTCFullYear(),
+    hoje.getUTCMonth(),
+    hoje.getUTCDate(),
+  ));
+
+  const data = {
+    inicioEm,
+    fimEm,
+    observacoes: observacoes || null,
+    atualizadoEm,
+  };
+
+  if (status === 'cancelada') {
+    if (typeof motivo_cancelamento !== 'string' || !motivo_cancelamento.trim()) {
+      return res.status(400).json({ erro: 'Informe o motivo do cancelamento' });
+    }
+    if (!Number.isInteger(cancelador_por) || cancelador_por < 1) {
+      return res.status(400).json({ erro: 'Informe o ID de quem cancelou' });
+    }
+
+    const cancelador = await prisma.usuario.findUnique({
+      where: { id: cancelador_por },
+      select: { id: true },
+    });
+    if (!cancelador) return res.status(400).json({ erro: 'O cancelador informado não existe' });
+
+    data.status = 'cancelada';
+    data.motivoCancelamento = motivo_cancelamento.trim();
+    data.canceladoEm = atualizadoEm;
+    data.canceladorPor = cancelador_por;
+  } else if (status === 'agendada') {
+    data.status = 'agendada';
+    data.motivoCancelamento = null;
+    data.canceladoEm = null;
+    data.canceladorPor = null;
+  }
+
+  await prisma.consulta.updateMany({ where: { id }, data });
+
+  const atualizada = await prisma.consulta.findFirst({ where: { id } });
+  res.json(respostaConsulta(atualizada));
+});
+
+router.delete('/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) {
+    return res.status(400).json({ erro: 'ID inválido' });
+  }
+
+  const consulta = await prisma.consulta.findFirst({ where: { id } });
+  if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
+
+  await prisma.consulta.deleteMany({ where: { id } });
+
+  res.status(204).send();
+});
+
 export default router;
