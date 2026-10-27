@@ -30,7 +30,6 @@ model Profissional {
 model ProfissionalEspecialidade {
   profissionalId  Int           @map("profissional_id")
   especialidadeId Int           @map("especialidade_id")
-  principal       Boolean
   criadoEm        DateTime      @map("criado_em") @db.Date
   profissional    Profissional  @relation(fields: [profissionalId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_profissional_has_especialidade_profissional")
   especialidade   Especialidade @relation(fields: [especialidadeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_profissional_has_especialidade_especialidade1")
@@ -59,11 +58,11 @@ model Usuario {
 model Agenda {
   id             Int          @default(autoincrement())
   profissionalId Int          @map("profissional_id")
+  data           DateTime     @db.Date
   horarioInicial DateTime     @map("horario_inicial") @db.Time(0)
   horarioFinal   DateTime     @map("horario_final") @db.Time(0)
   criadoPor      Int          @map("criado_por")
   criadoEm       DateTime     @map("criado_em") @db.Date
-  atualizadoEm   DateTime     @map("atualizado_em") @db.Date
   profissional   Profissional @relation(fields: [profissionalId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agendas_profissionais1")
   criador        Usuario      @relation("AgendaCriador", fields: [criadoPor], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agendas_usuarios1")
 
@@ -74,25 +73,19 @@ model Agenda {
 }
 
 model Consulta {
-  id                 Int           @default(autoincrement())
+  id                 Int           @id @default(autoincrement())
   pacienteId         Int           @map("paciente_id")
   profissionalId     Int           @map("profissional_id")
   especialidadeId    Int           @map("especialidade_id")
   inicioEm           DateTime      @map("inicio_em") @db.DateTime(0)
   fimEm              DateTime      @map("fim_em") @db.DateTime(0)
   status             String        @db.VarChar(20)
-  observacoes        String?       @db.Text
-  motivoCancelamento String?       @map("motivo_cancelamento") @db.Text
   canceladoEm        DateTime?     @map("cancelado_em") @db.Date
-  canceladorPor      Int?          @map("cancelador_por")
-  criadoPor          Int           @map("criado_por")
   criadoEm           DateTime      @map("criado_em") @db.Date
-  atualizadoEm       DateTime?     @map("atualizado_em") @db.Date
   paciente           Usuario       @relation("ConsultaPaciente", fields: [pacienteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_consultas_usuarios1")
   profissional       Profissional  @relation(fields: [profissionalId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_consultas_profissionais1")
   especialidade      Especialidade @relation(fields: [especialidadeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_consultas_especialidades1")
 
-  @@id([id, pacienteId, profissionalId, especialidadeId, criadoPor])
   @@index([pacienteId], map: "fk_consultas_usuarios1_idx")
   @@index([profissionalId], map: "fk_consultas_profissionais1_idx")
   @@index([especialidadeId], map: "fk_consultas_especialidades1_idx")

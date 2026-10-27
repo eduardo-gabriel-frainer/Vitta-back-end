@@ -23,7 +23,6 @@ CREATE TABLE `profissionais` (
 CREATE TABLE `profissional_especialidade` (
     `profissional_id` INTEGER NOT NULL,
     `especialidade_id` INTEGER NOT NULL,
-    `principal` BOOLEAN NOT NULL,
     `criado_em` DATE NOT NULL,
 
     INDEX `fk_profissional_has_especialidade_especialidade1_idx`(`especialidade_id`),
@@ -50,11 +49,11 @@ CREATE TABLE `usuarios` (
 CREATE TABLE `agendas` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `profissional_id` INTEGER NOT NULL,
+    `data` DATE NOT NULL,
     `horario_inicial` TIME(0) NOT NULL,
     `horario_final` TIME(0) NOT NULL,
     `criado_por` INTEGER NOT NULL,
     `criado_em` DATE NOT NULL,
-    `atualizado_em` DATE NOT NULL,
 
     INDEX `fk_agendas_profissionais1_idx`(`profissional_id`),
     INDEX `fk_agendas_usuarios1_idx`(`criado_por`),
@@ -70,18 +69,13 @@ CREATE TABLE `consultas` (
     `inicio_em` DATETIME(0) NOT NULL,
     `fim_em` DATETIME(0) NOT NULL,
     `status` VARCHAR(20) NOT NULL,
-    `observacoes` TEXT NULL,
-    `motivo_cancelamento` TEXT NULL,
     `cancelado_em` DATE NULL,
-    `cancelador_por` INTEGER NULL,
-    `criado_por` INTEGER NOT NULL,
     `criado_em` DATE NOT NULL,
-    `atualizado_em` DATE NULL,
 
     INDEX `fk_consultas_usuarios1_idx`(`paciente_id`),
     INDEX `fk_consultas_profissionais1_idx`(`profissional_id`),
     INDEX `fk_consultas_especialidades1_idx`(`especialidade_id`),
-    PRIMARY KEY (`id`, `paciente_id`, `profissional_id`, `especialidade_id`, `criado_por`)
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey

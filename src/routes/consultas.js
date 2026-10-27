@@ -12,13 +12,8 @@ function respostaConsulta(consulta) {
     inicio_em: consulta.inicioEm,
     fim_em: consulta.fimEm,
     status: consulta.status,
-    observacoes: consulta.observacoes,
-    motivo_cancelamento: consulta.motivoCancelamento,
     cancelado_em: consulta.canceladoEm,
-    cancelador_por: consulta.canceladorPor,
-    criado_por: consulta.criadoPor,
     criado_em: consulta.criadoEm,
-    atualizado_em: consulta.atualizadoEm,
   };
 }
 
@@ -48,13 +43,11 @@ router.post('/', async (req, res) => {
     especialidade_id,
     inicio_em,
     fim_em,
-    criado_por,
-    observacoes,
   } = req.body || {};
 
-  const ids = [paciente_id, profissional_id, especialidade_id, criado_por];
+  const ids = [paciente_id, profissional_id, especialidade_id];
   if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
-    return res.status(400).json({ erro: 'Informe os IDs de paciente, profissional, especialidade e criador' });
+    return res.status(400).json({ erro: 'Informe os IDs de paciente, profissional e especialidade' });
   }
 
   const inicioEm = new Date(`${inicio_em}`.replace(' ', 'T') + 'Z');
@@ -62,16 +55,6 @@ router.post('/', async (req, res) => {
   if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
     return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
   }
-  if (observacoes != null && typeof observacoes !== 'string') {
-    return res.status(400).json({ erro: 'Observações devem ser texto' });
-  }
-
-  const criador = await prisma.usuario.findUnique({
-    where: { id: criado_por },
-    select: { id: true },
-  });
-  if (!criador) return res.status(400).json({ erro: 'O criador informado não existe' });
-
   const hoje = new Date();
   const criadoEm = new Date(Date.UTC(
     hoje.getUTCFullYear(),
@@ -87,10 +70,7 @@ router.post('/', async (req, res) => {
       inicioEm,
       fimEm,
       status: 'agendada',
-      observacoes: observacoes || null,
-      criadoPor: criado_por,
       criadoEm,
-      atualizadoEm: criadoEm,
     },
   });
 
@@ -106,19 +86,13 @@ router.put('/:id', async (req, res) => {
   const {
     inicio_em,
     fim_em,
-    observacoes,
     status,
-    motivo_cancelamento,
-    cancelador_por,
   } = req.body || {};
 
   const inicioEm = new Date(`${inicio_em}`.replace(' ', 'T') + 'Z');
   const fimEm = new Date(`${fim_em}`.replace(' ', 'T') + 'Z');
   if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
     return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
-  }
-  if (observacoes != null && typeof observacoes !== 'string') {
-    return res.status(400).json({ erro: 'Observações devem ser texto' });
   }
   if (status != null && !['agendada', 'cancelada'].includes(status)) {
     return res.status(400).json({ erro: 'Status deve ser agendada ou cancelada' });
@@ -127,43 +101,22 @@ router.put('/:id', async (req, res) => {
   const consulta = await prisma.consulta.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
 
-  const hoje = new Date();
-  const atualizadoEm = new Date(Date.UTC(
-    hoje.getUTCFullYear(),
-    hoje.getUTCMonth(),
-    hoje.getUTCDate(),
-  ));
-
   const data = {
     inicioEm,
     fimEm,
-    observacoes: observacoes || null,
-    atualizadoEm,
   };
 
   if (status === 'cancelada') {
-    if (typeof motivo_cancelamento !== 'string' || !motivo_cancelamento.trim()) {
-      return res.status(400).json({ erro: 'Informe o motivo do cancelamento' });
-    }
-    if (!Number.isInteger(cancelador_por) || cancelador_por < 1) {
-      return res.status(400).json({ erro: 'Informe o ID de quem cancelou' });
-    }
-
-    const cancelador = await prisma.usuario.findUnique({
-      where: { id: cancelador_por },
-      select: { id: true },
-    });
-    if (!cancelador) return res.status(400).json({ erro: 'O cancelador informado não existe' });
-
+    const hoje = new Date();
     data.status = 'cancelada';
-    data.motivoCancelamento = motivo_cancelamento.trim();
-    data.canceladoEm = atualizadoEm;
-    data.canceladorPor = cancelador_por;
+    data.canceladoEm = new Date(Date.UTC(
+      hoje.getUTCFullYear(),
+      hoje.getUTCMonth(),
+      hoje.getUTCDate(),
+    ));
   } else if (status === 'agendada') {
     data.status = 'agendada';
-    data.motivoCancelamento = null;
     data.canceladoEm = null;
-    data.canceladorPor = null;
   }
 
   await prisma.consulta.updateMany({ where: { id }, data });
