@@ -36,3 +36,31 @@ export function dataAtualUtc() {
     hoje.getUTCDate(),
   ));
 }
+
+export function dataIsoValida(valor) {
+  if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return null;
+
+  const data = new Date(`${valor}T00:00:00.000Z`);
+  return data.toISOString().slice(0, 10) === valor ? data : null;
+}
+
+export function horarioValido(valor) {
+  if (typeof valor !== 'string') return null;
+
+  const partes = /^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/.exec(valor);
+  if (!partes) return null;
+
+  const [, horas, minutos, segundos = '0'] = partes;
+  return new Date(Date.UTC(1970, 0, 1, Number(horas), Number(minutos), Number(segundos)));
+}
+
+export function dataEHorario(data, horario) {
+  return new Date(Date.UTC(
+    data.getUTCFullYear(),
+    data.getUTCMonth(),
+    data.getUTCDate(),
+    horario.getUTCHours(),
+    horario.getUTCMinutes(),
+    horario.getUTCSeconds(),
+  ));
+}

@@ -1,8 +1,46 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
+import { agendaContemConsulta } from '../validacao/agendas.js';
 import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/validacoes.js';
 
 const router = Router();
+
+async function verificarConsultaDisponivel({
+  profissionalId,
+  inicioEm,
+  fimEm,
+  excluirConsultaId,
+}) {
+  const data = new Date(Date.UTC(
+    inicioEm.getUTCFullYear(),
+    inicioEm.getUTCMonth(),
+    inicioEm.getUTCDate(),
+  ));
+  const diaSeguinte = new Date(data);
+  diaSeguinte.setUTCDate(diaSeguinte.getUTCDate() + 1);
+
+  if (fimEm >= diaSeguinte) return 'fora_da_agenda';
+
+  const agendas = await prisma.agenda.findMany({
+    where: { profissionalId, data },
+  });
+  if (!agendas.some((agenda) => agendaContemConsulta(agenda, inicioEm, fimEm))) {
+    return 'fora_da_agenda';
+  }
+
+  const conflito = await prisma.consulta.findFirst({
+    where: {
+      profissionalId,
+      status: { not: 'cancelada' },
+      ...(excluirConsultaId == null ? {} : { id: { not: excluirConsultaId } }),
+      inicioEm: { lt: fimEm },
+      fimEm: { gt: inicioEm },
+    },
+    select: { id: true },
+  });
+
+  return conflito ? 'consulta_conflitante' : null;
+}
 
 function respostaConsulta(consulta) {
   return {
@@ -50,6 +88,17 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
   }
 
+  const erroDisponibilidade = await verificarConsultaDisponivel({
+    profissionalId: profissional_id,
+    ...intervalo,
+  });
+  if (erroDisponibilidade === 'fora_da_agenda') {
+    return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
+  }
+  if (erroDisponibilidade === 'consulta_conflitante') {
+    return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
+  }
+
   const consulta = await prisma.consulta.create({
     data: {
       pacienteId: paciente_id,
@@ -82,6 +131,20 @@ router.put('/:id', async (req, res) => {
 
   const consulta = await prisma.consulta.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
+
+  if ((status ?? consulta.status) !== 'cancelada') {
+    const erroDisponibilidade = await verificarConsultaDisponivel({
+      profissionalId: consulta.profissionalId,
+      ...intervalo,
+      excluirConsultaId: id,
+    });
+    if (erroDisponibilidade === 'fora_da_agenda') {
+      return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
+    }
+    if (erroDisponibilidade === 'consulta_conflitante') {
+      return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
+    }
+  }
 
   const data = { ...intervalo };
 

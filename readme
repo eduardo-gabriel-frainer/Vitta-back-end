@@ -5,3 +5,25 @@
 5 - npm run dev
 
 (caso o npm run dev retorne "app crashed", rode o comando npx prisma generate --config prisma.config.ts)
+
+API de agendas
+
+- GET /agendas: lista agendas; pode filtrar com profissional_id e data (YYYY-MM-DD).
+- GET /agendas/:id: busca uma agenda.
+- POST /agendas: cria uma disponibilidade.
+- PUT /agendas/:id: altera profissional, data e horários da disponibilidade.
+- DELETE /agendas/:id: exclui uma disponibilidade.
+
+Exemplo de body para criar ou alterar:
+{
+  "profissional_id": 1,
+  "data": "2026-10-28",
+  "horario_inicial": "09:00",
+  "horario_final": "17:00",
+  "criado_por": 1
+}
+
+Os horários precisam formar um intervalo válido. Não são permitidas agendas sobrepostas
+para o mesmo profissional e data. Consultas ativas precisam caber integralmente em uma
+agenda, e não podem se sobrepor para o mesmo profissional. Uma agenda não pode ser
+alterada ou excluída se isso deixar consultas existentes sem disponibilidade.
