@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
+import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/validacoes.js';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
@@ -37,40 +38,26 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const {
-    paciente_id,
-    profissional_id,
-    especialidade_id,
-    inicio_em,
-    fim_em,
-  } = req.body || {};
+  const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em } = req.body || {};
 
   const ids = [paciente_id, profissional_id, especialidade_id];
-  if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+  if (ids.some((id) => !idPositivoValido(id))) {
     return res.status(400).json({ erro: 'Informe os IDs de paciente, profissional e especialidade' });
   }
 
-  const inicioEm = new Date(`${inicio_em}`.replace(' ', 'T') + 'Z');
-  const fimEm = new Date(`${fim_em}`.replace(' ', 'T') + 'Z');
-  if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
+  const intervalo = intervaloValido(inicio_em, fim_em);
+  if (!intervalo) {
     return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
   }
-  const hoje = new Date();
-  const criadoEm = new Date(Date.UTC(
-    hoje.getUTCFullYear(),
-    hoje.getUTCMonth(),
-    hoje.getUTCDate(),
-  ));
 
   const consulta = await prisma.consulta.create({
     data: {
       pacienteId: paciente_id,
       profissionalId: profissional_id,
       especialidadeId: especialidade_id,
-      inicioEm,
-      fimEm,
+      ...intervalo,
       status: 'agendada',
-      criadoEm,
+      criadoEm: dataAtualUtc(),
     },
   });
 
@@ -79,19 +66,14 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
-  const {
-    inicio_em,
-    fim_em,
-    status,
-  } = req.body || {};
+  const { inicio_em, fim_em, status } = req.body || {};
 
-  const inicioEm = new Date(`${inicio_em}`.replace(' ', 'T') + 'Z');
-  const fimEm = new Date(`${fim_em}`.replace(' ', 'T') + 'Z');
-  if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
+  const intervalo = intervaloValido(inicio_em, fim_em);
+  if (!intervalo) {
     return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
   }
   if (status != null && !['agendada', 'cancelada'].includes(status)) {
@@ -101,19 +83,11 @@ router.put('/:id', async (req, res) => {
   const consulta = await prisma.consulta.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
 
-  const data = {
-    inicioEm,
-    fimEm,
-  };
+  const data = { ...intervalo };
 
   if (status === 'cancelada') {
-    const hoje = new Date();
     data.status = 'cancelada';
-    data.canceladoEm = new Date(Date.UTC(
-      hoje.getUTCFullYear(),
-      hoje.getUTCMonth(),
-      hoje.getUTCDate(),
-    ));
+    data.canceladoEm = dataAtualUtc();
   } else if (status === 'agendada') {
     data.status = 'agendada';
     data.canceladoEm = null;
@@ -127,7 +101,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 

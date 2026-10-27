@@ -1,5 +1,11 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
+import {
+  idPositivoValido,
+  nomeValido,
+  normalizarTextoOpcional,
+  textosOpcionaisValidos,
+} from '../validacao/validacoes.js';
 
 const router = Router();
 
@@ -12,7 +18,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
@@ -24,18 +30,19 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { nome, email, telefone } = req.body || {};
-  if (typeof nome !== 'string' || !nome.trim()) {
+  const nomeNormalizado = nomeValido(nome);
+  if (!nomeNormalizado) {
     return res.status(400).json({ erro: 'Nome é obrigatório' });
   }
-  if ([email, telefone].some((value) => value != null && typeof value !== 'string')) {
+  if (!textosOpcionaisValidos(email, telefone)) {
     return res.status(400).json({ erro: 'Email e telefone devem ser texto' });
   }
 
   const profissional = await prisma.profissional.create({
     data: {
-      nome: nome.trim(),
-      email: email?.trim() || null,
-      telefone: telefone?.trim() || null,
+      nome: nomeNormalizado,
+      email: normalizarTextoOpcional(email),
+      telefone: normalizarTextoOpcional(telefone),
     },
   });
 
@@ -44,15 +51,16 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
   const { nome, email, telefone } = req.body || {};
-  if (typeof nome !== 'string' || !nome.trim()) {
+  const nomeNormalizado = nomeValido(nome);
+  if (!nomeNormalizado) {
     return res.status(400).json({ erro: 'Nome é obrigatório' });
   }
-  if ([email, telefone].some((value) => value != null && typeof value !== 'string')) {
+  if (!textosOpcionaisValidos(email, telefone)) {
     return res.status(400).json({ erro: 'Email e telefone devem ser texto' });
   }
 
@@ -62,9 +70,9 @@ router.put('/:id', async (req, res) => {
   const profissional = await prisma.profissional.update({
     where: { id },
     data: {
-      nome: nome.trim(),
-      email: email?.trim() || null,
-      telefone: telefone?.trim() || null,
+      nome: nomeNormalizado,
+      email: normalizarTextoOpcional(email),
+      telefone: normalizarTextoOpcional(telefone),
     },
   });
 
@@ -73,7 +81,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 

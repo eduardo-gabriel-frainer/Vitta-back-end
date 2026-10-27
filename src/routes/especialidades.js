@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
+import { idPositivoValido, nomeValido } from '../validacao/validacoes.js';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
@@ -24,12 +25,13 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { nome } = req.body || {};
-  if (typeof nome !== 'string' || !nome.trim()) {
+  const nomeNormalizado = nomeValido(nome);
+  if (!nomeNormalizado) {
     return res.status(400).json({ erro: 'Nome é obrigatório' });
   }
 
   const especialidade = await prisma.especialidade.create({
-    data: { nome: nome.trim() },
+    data: { nome: nomeNormalizado },
   });
 
   res.location(`/especialidades/${especialidade.id}`).status(201).json(especialidade);
@@ -37,12 +39,13 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
   const { nome } = req.body || {};
-  if (typeof nome !== 'string' || !nome.trim()) {
+  const nomeNormalizado = nomeValido(nome);
+  if (!nomeNormalizado) {
     return res.status(400).json({ erro: 'Nome é obrigatório' });
   }
 
@@ -51,7 +54,7 @@ router.put('/:id', async (req, res) => {
 
   const especialidade = await prisma.especialidade.update({
     where: { id },
-    data: { nome: nome.trim() },
+    data: { nome: nomeNormalizado },
   });
 
   res.json(especialidade);
@@ -59,7 +62,7 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id < 1) {
+  if (!idPositivoValido(id)) {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
