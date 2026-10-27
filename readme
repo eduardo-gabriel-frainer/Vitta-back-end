@@ -3,3 +3,5 @@
 3 - crie o .env (DATABASE_URL="mysql://root@localhost:3306/vitta")
 4 - npx prisma migrate dev
 5 - npm run dev
+
+(caso o npm run dev retorne "app crashed", rode o comando npx prisma generate --config prisma.config.ts)
