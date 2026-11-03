@@ -1,10 +1,42 @@
-1 - npm i
+1 - comonpm i
 2 - START xampp
 3 - crie o .env (DATABASE_URL="mysql://root@localhost:3306/vitta")
 4 - npx prisma migrate dev
 5 - npm run dev
 
 (caso o npm run dev retorne "app crashed", rode o comando npx prisma generate --config prisma.config.ts)
+
+Passo a passo para resolver definitivamente
+1. Abrir o PowerShell como administrador
+Pressione Windows + X.
+
+Abra o Terminal (Administrador).
+
+Selecione PowerShell, caso necessário.
+
+2. Desativar a inicialização automática do MySQL80
+Copie e cole este comando:
+
+powershell
+Set-Service -Name MySQL80 -StartupType Manual
+Isso significa que o MySQL80 continuará instalado, mas não iniciará sozinho quando você ligar o computador.
+
+3. Parar o MySQL80
+Execute:
+
+
+powershell
+Stop-Service -Name MySQL80
+
+
+
+
+
+
+
+
+
+
 
 API de agendas
 
