@@ -8,26 +8,12 @@
 
 Passo a passo para resolver definitivamente
 1. Abrir o PowerShell como administrador
-Pressione Windows + X.
 
-Abra o Terminal (Administrador).
+e digite
 
-Selecione PowerShell, caso necessário.
-
-2. Desativar a inicialização automática do MySQL80
-Copie e cole este comando:
-
-powershell
-Set-Service -Name MySQL80 -StartupType Manual
-Isso significa que o MySQL80 continuará instalado, mas não iniciará sozinho quando você ligar o computador.
-
-3. Parar o MySQL80
-Execute:
-
-
-powershell
 Stop-Service -Name MySQL80
 
+e seja feliz
 
 
 
