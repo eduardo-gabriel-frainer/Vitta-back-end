@@ -6,35 +6,35 @@ import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/va
 const router = Router();
 
 async function verificarConsultaDisponivel({
-  profissionalId,
-  inicioEm,
-  fimEm,
-  excluirConsultaId,
+  profissional_id,
+  inicio_em,
+  fim_em,
+  excluir_consulta_id,
 }) {
   const data = new Date(Date.UTC(
-    inicioEm.getUTCFullYear(),
-    inicioEm.getUTCMonth(),
-    inicioEm.getUTCDate(),
+    inicio_em.getUTCFullYear(),
+    inicio_em.getUTCMonth(),
+    inicio_em.getUTCDate(),
   ));
   const diaSeguinte = new Date(data);
   diaSeguinte.setUTCDate(diaSeguinte.getUTCDate() + 1);
 
-  if (fimEm >= diaSeguinte) return 'fora_da_agenda';
+  if (fim_em >= diaSeguinte) return 'fora_da_agenda';
 
-  const agendas = await prisma.agenda.findMany({
-    where: { profissionalId, data },
+  const agendas = await prisma.agendas.findMany({
+    where: { profissional_id, data },
   });
-  if (!agendas.some((agenda) => agendaContemConsulta(agenda, inicioEm, fimEm))) {
+  if (!agendas.some((agenda) => agendaContemConsulta(agenda, inicio_em, fim_em))) {
     return 'fora_da_agenda';
   }
 
-  const conflito = await prisma.consulta.findFirst({
+  const conflito = await prisma.consultas.findFirst({
     where: {
-      profissionalId,
+      profissional_id,
       status: { not: 'cancelada' },
-      ...(excluirConsultaId == null ? {} : { id: { not: excluirConsultaId } }),
-      inicioEm: { lt: fimEm },
-      fimEm: { gt: inicioEm },
+      ...(excluir_consulta_id == null ? {} : { id: { not: excluir_consulta_id } }),
+      inicio_em: { lt: fim_em },
+      fim_em: { gt: inicio_em },
     },
     select: { id: true },
   });
@@ -45,19 +45,19 @@ async function verificarConsultaDisponivel({
 function respostaConsulta(consulta) {
   return {
     id: consulta.id,
-    paciente_id: consulta.pacienteId,
-    profissional_id: consulta.profissionalId,
-    especialidade_id: consulta.especialidadeId,
-    inicio_em: consulta.inicioEm,
-    fim_em: consulta.fimEm,
+    paciente_id: consulta.paciente_id,
+    profissional_id: consulta.profissional_id,
+    especialidade_id: consulta.especialidade_id,
+    inicio_em: consulta.inicio_em,
+    fim_em: consulta.fim_em,
     status: consulta.status,
-    cancelado_em: consulta.canceladoEm,
-    criado_em: consulta.criadoEm,
+    cancelado_em: consulta.cancelado_em,
+    criado_em: consulta.criado_em,
   };
 }
 
 router.get('/', async (req, res) => {
-  const consultas = await prisma.consulta.findMany({
+  const consultas = await prisma.consultas.findMany({
     orderBy: { id: 'asc' },
   });
   res.json(consultas.map(respostaConsulta));
@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
-  const consulta = await prisma.consulta.findFirst({ where: { id } });
+  const consulta = await prisma.consultas.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
 
   res.json(respostaConsulta(consulta));
@@ -89,7 +89,7 @@ router.post('/', async (req, res) => {
   }
 
   const erroDisponibilidade = await verificarConsultaDisponivel({
-    profissionalId: profissional_id,
+    profissional_id,
     ...intervalo,
   });
   if (erroDisponibilidade === 'fora_da_agenda') {
@@ -99,14 +99,15 @@ router.post('/', async (req, res) => {
     return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
   }
 
-  const consulta = await prisma.consulta.create({
+  const consulta = await prisma.consultas.create({
     data: {
-      pacienteId: paciente_id,
-      profissionalId: profissional_id,
-      especialidadeId: especialidade_id,
-      ...intervalo,
+      paciente_id,
+      profissional_id,
+      especialidade_id,
+      inicio_em: intervalo.inicioEm,
+      fim_em: intervalo.fimEm,
       status: 'agendada',
-      criadoEm: dataAtualUtc(),
+      criado_em: dataAtualUtc(),
     },
   });
 
@@ -129,14 +130,14 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'Status deve ser agendada ou cancelada' });
   }
 
-  const consulta = await prisma.consulta.findFirst({ where: { id } });
+  const consulta = await prisma.consultas.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
 
   if ((status ?? consulta.status) !== 'cancelada') {
     const erroDisponibilidade = await verificarConsultaDisponivel({
-      profissionalId: consulta.profissionalId,
+      profissional_id: consulta.profissional_id,
       ...intervalo,
-      excluirConsultaId: id,
+      excluir_consulta_id: id,
     });
     if (erroDisponibilidade === 'fora_da_agenda') {
       return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
@@ -146,19 +147,22 @@ router.put('/:id', async (req, res) => {
     }
   }
 
-  const data = { ...intervalo };
+  const data = {
+    inicio_em: intervalo.inicioEm,
+    fim_em: intervalo.fimEm,
+  };
 
   if (status === 'cancelada') {
     data.status = 'cancelada';
-    data.canceladoEm = dataAtualUtc();
+    data.cancelado_em = dataAtualUtc();
   } else if (status === 'agendada') {
     data.status = 'agendada';
-    data.canceladoEm = null;
+    data.cancelado_em = null;
   }
 
-  await prisma.consulta.updateMany({ where: { id }, data });
+  await prisma.consultas.updateMany({ where: { id }, data });
 
-  const atualizada = await prisma.consulta.findFirst({ where: { id } });
+  const atualizada = await prisma.consultas.findFirst({ where: { id } });
   res.json(respostaConsulta(atualizada));
 });
 
@@ -168,10 +172,10 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
-  const consulta = await prisma.consulta.findFirst({ where: { id } });
+  const consulta = await prisma.consultas.findFirst({ where: { id } });
   if (!consulta) return res.status(404).json({ erro: 'Consulta não encontrada' });
 
-  await prisma.consulta.deleteMany({ where: { id } });
+  await prisma.consultas.deleteMany({ where: { id } });
 
   res.status(204).send();
 });

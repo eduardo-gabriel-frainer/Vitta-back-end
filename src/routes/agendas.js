@@ -5,13 +5,13 @@ import { agendaContemConsulta, dadosAgendaValidos, filtrosAgendaValidos } from '
 
 const router = Router();
 
-async function buscarAgendaSobreposta({ profissionalId, data, horarioInicial, horarioFinal }, id) {
-  return prisma.agenda.findFirst({
+async function buscarAgendaSobreposta({ profissional_id, data, horario_inicial, horario_final }, id) {
+  return prisma.agendas.findFirst({
     where: {
-      profissionalId,
+      profissional_id,
       data,
-      horarioInicial: { lt: horarioFinal },
-      horarioFinal: { gt: horarioInicial },
+      horario_inicial: { lt: horario_final },
+      horario_final: { gt: horario_inicial },
       ...(id == null ? {} : { id: { not: id } }),
     },
     select: { id: true },
@@ -19,49 +19,49 @@ async function buscarAgendaSobreposta({ profissionalId, data, horarioInicial, ho
 }
 
 async function consultasContinuamDisponiveis({
-  profissionalId,
+  profissional_id,
   data,
-  inicioAgenda,
-  fimAgenda,
-  agendaId,
-  novaAgenda,
+  inicio_agenda,
+  fim_agenda,
+  agenda_id,
+  nova_agenda,
 }) {
-  const inicioEm = dataEHorario(data, inicioAgenda);
-  const fimEm = dataEHorario(data, fimAgenda);
+  const inicioEm = dataEHorario(data, inicio_agenda);
+  const fimEm = dataEHorario(data, fim_agenda);
 
-  const consultas = await prisma.consulta.findMany({
+  const consultas = await prisma.consultas.findMany({
     where: {
-      profissionalId,
+      profissional_id,
       status: { not: 'cancelada' },
-      inicioEm: { lt: fimEm },
-      fimEm: { gt: inicioEm },
+      inicio_em: { lt: fimEm },
+      fim_em: { gt: inicioEm },
     },
   });
 
-  const outrasAgendas = await prisma.agenda.findMany({
+  const outrasAgendas = await prisma.agendas.findMany({
     where: {
-      profissionalId,
+      profissional_id,
       data,
-      ...(agendaId == null ? {} : { id: { not: agendaId } }),
+      ...(agenda_id == null ? {} : { id: { not: agenda_id } }),
     },
   });
   const agendasDisponiveis = [
     ...outrasAgendas,
-    ...(novaAgenda ? [novaAgenda] : []),
+    ...(nova_agenda ? [nova_agenda] : []),
   ];
 
   return consultas.every((consulta) =>
     agendasDisponiveis.some((agenda) =>
-      agendaContemConsulta(agenda, consulta.inicioEm, consulta.fimEm)));
+      agendaContemConsulta(agenda, consulta.inicio_em, consulta.fim_em)));
 }
 
 router.get('/', async (req, res) => {
   const filtros = filtrosAgendaValidos(req.query);
   if (filtros.erro) return res.status(400).json({ erro: filtros.erro });
 
-  const agendas = await prisma.agenda.findMany({
+  const agendas = await prisma.agendas.findMany({
     where: filtros.where,
-    orderBy: [{ data: 'asc' }, { horarioInicial: 'asc' }],
+    orderBy: [{ data: 'asc' }, { horario_inicial: 'asc' }],
   });
   res.json(agendas);
 });
@@ -70,7 +70,7 @@ router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!idPositivoValido(id)) return res.status(400).json({ erro: 'ID inválido' });
 
-  const agenda = await prisma.agenda.findFirst({ where: { id } });
+  const agenda = await prisma.agendas.findFirst({ where: { id } });
   if (!agenda) return res.status(404).json({ erro: 'Agenda não encontrada' });
 
   res.json(agenda);
@@ -86,11 +86,11 @@ router.post('/', async (req, res) => {
   }
 
   const [profissional, criador] = await Promise.all([
-    prisma.profissional.findUnique({
-      where: { id: dados.profissionalId },
+    prisma.profissionais.findUnique({
+      where: { id: dados.profissional_id },
       select: { id: true },
     }),
-    prisma.usuario.findUnique({
+    prisma.usuarios.findUnique({
       where: { id: criadoPor },
       select: { id: true },
     }),
@@ -104,19 +104,19 @@ router.post('/', async (req, res) => {
 
   const disponivel = await consultasContinuamDisponiveis({
     ...dados,
-    inicioAgenda: dados.horarioInicial,
-    fimAgenda: dados.horarioFinal,
-    novaAgenda: { ...dados },
+    inicio_agenda: dados.horario_inicial,
+    fim_agenda: dados.horario_final,
+    nova_agenda: { ...dados },
   });
   if (!disponivel) {
     return res.status(409).json({ erro: 'A agenda deixaria uma consulta fora da disponibilidade' });
   }
 
-  const agenda = await prisma.agenda.create({
+  const agenda = await prisma.agendas.create({
     data: {
       ...dados,
-      criadoPor,
-      criadoEm: dataAtualUtc(),
+      criado_por: criadoPor,
+      criado_em: dataAtualUtc(),
     },
   });
 
@@ -134,11 +134,11 @@ router.put('/:id', async (req, res) => {
     });
   }
 
-  const existente = await prisma.agenda.findFirst({ where: { id } });
+  const existente = await prisma.agendas.findFirst({ where: { id } });
   if (!existente) return res.status(404).json({ erro: 'Agenda não encontrada' });
 
-  const profissional = await prisma.profissional.findUnique({
-    where: { id: dados.profissionalId },
+  const profissional = await prisma.profissionais.findUnique({
+    where: { id: dados.profissional_id },
     select: { id: true },
   });
   if (!profissional) return res.status(400).json({ erro: 'O profissional informado não existe' });
@@ -148,34 +148,34 @@ router.put('/:id', async (req, res) => {
   }
 
   const novaAgenda = { id, ...dados };
-  const mesmaDisponibilidade = existente.profissionalId === dados.profissionalId
+  const mesmaDisponibilidade = existente.profissional_id === dados.profissional_id
     && existente.data.getTime() === dados.data.getTime();
   const disponibilidadeAntigaMantida = await consultasContinuamDisponiveis({
-    profissionalId: existente.profissionalId,
+    profissional_id: existente.profissional_id,
     data: existente.data,
-    inicioAgenda: existente.horarioInicial,
-    fimAgenda: existente.horarioFinal,
-    agendaId: id,
-    novaAgenda: mesmaDisponibilidade ? novaAgenda : undefined,
+    inicio_agenda: existente.horario_inicial,
+    fim_agenda: existente.horario_final,
+    agenda_id: id,
+    nova_agenda: mesmaDisponibilidade ? novaAgenda : undefined,
   });
   if (!disponibilidadeAntigaMantida) {
     return res.status(409).json({ erro: 'A alteração deixaria uma consulta fora da disponibilidade' });
   }
 
   const disponibilidadeNovaMantida = await consultasContinuamDisponiveis({
-    profissionalId: dados.profissionalId,
+    profissional_id: dados.profissional_id,
     data: dados.data,
-    inicioAgenda: dados.horarioInicial,
-    fimAgenda: dados.horarioFinal,
-    agendaId: id,
-    novaAgenda,
+    inicio_agenda: dados.horario_inicial,
+    fim_agenda: dados.horario_final,
+    agenda_id: id,
+    nova_agenda: novaAgenda,
   });
   if (!disponibilidadeNovaMantida) {
     return res.status(409).json({ erro: 'A alteração deixaria uma consulta fora da disponibilidade' });
   }
 
-  await prisma.agenda.updateMany({ where: { id }, data: dados });
-  const atualizada = await prisma.agenda.findFirst({ where: { id } });
+  await prisma.agendas.updateMany({ where: { id }, data: dados });
+  const atualizada = await prisma.agendas.findFirst({ where: { id } });
   res.json(atualizada);
 });
 
@@ -183,21 +183,21 @@ router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!idPositivoValido(id)) return res.status(400).json({ erro: 'ID inválido' });
 
-  const agenda = await prisma.agenda.findFirst({ where: { id } });
+  const agenda = await prisma.agendas.findFirst({ where: { id } });
   if (!agenda) return res.status(404).json({ erro: 'Agenda não encontrada' });
 
   const consultasSeguemDisponiveis = await consultasContinuamDisponiveis({
-    profissionalId: agenda.profissionalId,
+    profissional_id: agenda.profissional_id,
     data: agenda.data,
-    inicioAgenda: agenda.horarioInicial,
-    fimAgenda: agenda.horarioFinal,
-    agendaId: id,
+    inicio_agenda: agenda.horario_inicial,
+    fim_agenda: agenda.horario_final,
+    agenda_id: id,
   });
   if (!consultasSeguemDisponiveis) {
     return res.status(409).json({ erro: 'Não é possível excluir: há consultas sem outra disponibilidade' });
   }
 
-  await prisma.agenda.deleteMany({ where: { id } });
+  await prisma.agendas.deleteMany({ where: { id } });
   res.status(204).send();
 });
 

@@ -11,14 +11,14 @@ import {
 const router = Router();
 
 const incluirEspecialidades = {
-  profissionalEspecialidades: {
+  profissional_especialidades: {
     include: { especialidade: true },
-    orderBy: { especialidadeId: 'asc' },
+    orderBy: { especialidade_id: 'asc' },
   },
 };
 
 router.get('/', async (req, res) => {
-  const profissionais = await prisma.profissional.findMany({
+  const profissionais = await prisma.profissionais.findMany({
     orderBy: { id: 'asc' },
     include: incluirEspecialidades,
   });
@@ -31,7 +31,7 @@ router.get('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
-  const profissional = await prisma.profissional.findUnique({
+  const profissional = await prisma.profissionais.findUnique({
     where: { id },
     include: incluirEspecialidades,
   });
@@ -62,7 +62,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ erro: 'Selecione ao menos uma especialidade válida' });
   }
 
-  const especialidadesEncontradas = await prisma.especialidade.findMany({
+  const especialidadesEncontradas = await prisma.especialidades.findMany({
     where: { id: { in: especialidadeIds } },
     select: { id: true },
   });
@@ -71,7 +71,7 @@ router.post('/', async (req, res) => {
   }
 
   const profissional = await prisma.$transaction(async (tx) => {
-    const criado = await tx.profissional.create({
+    const criado = await tx.profissionais.create({
       data: {
         nome: nomeNormalizado,
         email: normalizarTextoOpcional(email),
@@ -80,16 +80,16 @@ router.post('/', async (req, res) => {
     });
 
     for (const especialidadeId of especialidadeIds) {
-      await tx.profissionalEspecialidade.create({
+      await tx.profissional_especialidade.create({
         data: {
-          profissionalId: criado.id,
-          especialidadeId,
-          criadoEm: dataAtualUtc(),
+          profissional_id: criado.id,
+          especialidade_id: especialidadeId,
+          criado_em: dataAtualUtc(),
         },
       });
     }
 
-    return tx.profissional.findUnique({
+    return tx.profissionais.findUnique({
       where: { id: criado.id },
       include: incluirEspecialidades,
     });
@@ -127,7 +127,7 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'Selecione ao menos uma especialidade válida' });
   }
   if (especialidadeIds !== undefined) {
-    const especialidadesEncontradas = await prisma.especialidade.findMany({
+    const especialidadesEncontradas = await prisma.especialidades.findMany({
       where: { id: { in: especialidadeIds } },
       select: { id: true },
     });
@@ -136,11 +136,11 @@ router.put('/:id', async (req, res) => {
     }
   }
 
-  const existente = await prisma.profissional.findUnique({ where: { id } });
+  const existente = await prisma.profissionais.findUnique({ where: { id } });
   if (!existente) return res.status(404).json({ erro: 'Profissional não encontrado' });
 
   const profissional = await prisma.$transaction(async (tx) => {
-    await tx.profissional.update({
+    await tx.profissionais.update({
       where: { id },
       data: {
         nome: nomeNormalizado,
@@ -150,21 +150,21 @@ router.put('/:id', async (req, res) => {
     });
 
     if (especialidadeIds !== undefined) {
-      await tx.profissionalEspecialidade.deleteMany({
-        where: { profissionalId: id },
+      await tx.profissional_especialidade.deleteMany({
+        where: { profissional_id: id },
       });
       for (const especialidadeId of especialidadeIds) {
-        await tx.profissionalEspecialidade.create({
+        await tx.profissional_especialidade.create({
           data: {
-            profissionalId: id,
-            especialidadeId,
-            criadoEm: dataAtualUtc(),
+            profissional_id: id,
+            especialidade_id: especialidadeId,
+            criado_em: dataAtualUtc(),
           },
         });
       }
     }
 
-    return tx.profissional.findUnique({
+    return tx.profissionais.findUnique({
       where: { id },
       include: incluirEspecialidades,
     });
@@ -179,20 +179,20 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'ID inválido' });
   }
 
-  const profissional = await prisma.profissional.findUnique({ where: { id } });
+  const profissional = await prisma.profissionais.findUnique({ where: { id } });
   if (!profissional) return res.status(404).json({ erro: 'Profissional não encontrado' });
 
   const [consultas, agendas] = await Promise.all([
-    prisma.consulta.count({ where: { profissionalId: id } }),
-    prisma.agenda.count({ where: { profissionalId: id } }),
+    prisma.consultas.count({ where: { profissional_id: id } }),
+    prisma.agendas.count({ where: { profissional_id: id } }),
   ]);
   if (consultas > 0 || agendas > 0) {
     return res.status(409).json({ erro: 'Profissional possui consultas ou agendas vinculadas' });
   }
 
   await prisma.$transaction([
-    prisma.profissionalEspecialidade.deleteMany({ where: { profissionalId: id } }),
-    prisma.profissional.delete({ where: { id } }),
+    prisma.profissional_especialidade.deleteMany({ where: { profissional_id: id } }),
+    prisma.profissionais.delete({ where: { id } }),
   ]);
 
   res.status(204).send();
