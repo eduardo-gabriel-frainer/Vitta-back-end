@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { agendaContemConsulta } from '../validacao/agendas.js';
 import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/validacoes.js';
+import { emailQueue } from '../queues/emailQueue.js'; // 1. Importe a fila aqui
 
 const router = Router();
 
@@ -76,42 +77,66 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em } = req.body || {};
+  try {
+    const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em, pacienteEmail } = req.body || {};
 
-  const ids = [paciente_id, profissional_id, especialidade_id];
-  if (ids.some((id) => !idPositivoValido(id))) {
-    return res.status(400).json({ erro: 'Informe os IDs de paciente, profissional e especialidade' });
-  }
+    const ids = [paciente_id, profissional_id, especialidade_id];
+    if (ids.some((id) => !idPositivoValido(id))) {
+      return res.status(400).json({ erro: 'Informe os IDs de paciente, profissional e especialidade' });
+    }
 
-  const intervalo = intervaloValido(inicio_em, fim_em);
-  if (!intervalo) {
-    return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
-  }
+    const intervalo = intervaloValido(inicio_em, fim_em);
+    if (!intervalo) {
+      return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
+    }
 
-  const erroDisponibilidade = await verificarConsultaDisponivel({
-    profissional_id,
-    ...intervalo,
-  });
-  if (erroDisponibilidade === 'fora_da_agenda') {
-    return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
-  }
-  if (erroDisponibilidade === 'consulta_conflitante') {
-    return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
-  }
-
-  const consulta = await prisma.consultas.create({
-    data: {
-      paciente_id,
+    const erroDisponibilidade = await verificarConsultaDisponivel({
       profissional_id,
-      especialidade_id,
-      inicio_em: intervalo.inicioEm,
-      fim_em: intervalo.fimEm,
-      status: 'agendada',
-      criado_em: dataAtualUtc(),
-    },
-  });
+      ...intervalo,
+    });
+    if (erroDisponibilidade === 'fora_da_agenda') {
+      return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
+    }
+    if (erroDisponibilidade === 'consulta_conflitante') {
+      return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
+    }
 
-  res.location(`/consultas/${consulta.id}`).status(201).json(respostaConsulta(consulta));
+    // Cria a consulta no banco usando o seu schema original
+    const consulta = await prisma.consultas.create({
+      data: {
+        paciente_id,
+        profissional_id,
+        especialidade_id,
+        inicio_em: intervalo.inicioEm,
+        fim_em: intervalo.fimEm,
+        status: 'agendada',
+        criado_em: dataAtualUtc(),
+      },
+      include: {
+        profissional: true,    // Traz os dados do profissional para o e-mail
+        especialidade: true,   // Traz os dados da especialidade para o e-mail
+      }
+    });
+
+    // 2. Adiciona o envio do e-mail na fila (se o e-mail do paciente foi informado)
+    if (pacienteEmail) {
+      await emailQueue.add('enviar-confirmacao', {
+        destinatario: pacienteEmail,
+        dadosConsulta: {
+          medico: consulta.profissional?.nome || 'Profissional',
+          especialidade: consulta.especialidade?.nome || 'Geral',
+          data: new Date(consulta.inicio_em).toLocaleDateString('pt-BR'),
+          horario: new Date(consulta.inicio_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        }
+      });
+    }
+
+    return res.location(`/consultas/${consulta.id}`).status(201).json(respostaConsulta(consulta));
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ erro: 'Erro interno ao registrar a consulta.' });
+  }
 });
 
 router.put('/:id', async (req, res) => {
