@@ -6,6 +6,11 @@
 
 (caso o npm run dev retorne "app crashed", rode o comando npx prisma generate --config prisma.config.ts)
 
+Autenticação
+
+- Configure `JWT_SECRET` no `.env` com pelo menos 32 bytes aleatórios. Para gerar um valor:
+  `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`
+
 Passo a passo para resolver definitivamente
 1. Abrir o PowerShell como administrador
 

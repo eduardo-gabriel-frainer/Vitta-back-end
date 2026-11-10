@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { agendaContemConsulta } from '../validacao/agendas.js';
 import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/validacoes.js';
+import autenticar from '../middlewares/autenticar.js';
 
 const router = Router();
 
@@ -74,6 +75,8 @@ router.get('/:id', async (req, res) => {
 
   res.json(respostaConsulta(consulta));
 });
+
+router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em } = req.body || {};

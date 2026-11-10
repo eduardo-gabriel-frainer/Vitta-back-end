@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { dataAtualUtc, dataEHorario, idPositivoValido } from '../validacao/validacoes.js';
 import { agendaContemConsulta, dadosAgendaValidos, filtrosAgendaValidos } from '../validacao/agendas.js';
+import autenticar from '../middlewares/autenticar.js';
 
 const router = Router();
 
@@ -76,27 +77,22 @@ router.get('/:id', async (req, res) => {
   res.json(agenda);
 });
 
+router.use(autenticar);
+
 router.post('/', async (req, res) => {
   const dados = dadosAgendaValidos(req.body);
-  const criadoPor = req.body?.criado_por;
-  if (!dados || !idPositivoValido(criadoPor)) {
+  const criadoPor = req.usuario.id;
+  if (!dados) {
     return res.status(400).json({
-      erro: 'Informe profissional_id, data, horários válidos e criado_por',
+      erro: 'Informe profissional_id, data e horários válidos',
     });
   }
 
-  const [profissional, criador] = await Promise.all([
-    prisma.profissionais.findUnique({
-      where: { id: dados.profissional_id },
-      select: { id: true },
-    }),
-    prisma.usuarios.findUnique({
-      where: { id: criadoPor },
-      select: { id: true },
-    }),
-  ]);
+  const profissional = await prisma.profissionais.findUnique({
+    where: { id: dados.profissional_id },
+    select: { id: true },
+  });
   if (!profissional) return res.status(400).json({ erro: 'O profissional informado não existe' });
-  if (!criador) return res.status(400).json({ erro: 'O criador informado não existe' });
 
   if (await buscarAgendaSobreposta(dados)) {
     return res.status(409).json({ erro: 'Já existe uma agenda sobreposta para esse profissional' });

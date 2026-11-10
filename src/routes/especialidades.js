@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../lib/prisma.js';
 import { idPositivoValido, nomeValido } from '../validacao/validacoes.js';
+import autenticar from '../middlewares/autenticar.js';
 
 const router = Router();
 
@@ -22,6 +23,8 @@ router.get('/:id', async (req, res) => {
 
   res.json(especialidade);
 });
+
+router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const { nome } = req.body || {};

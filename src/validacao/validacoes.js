@@ -6,7 +6,13 @@ export function nomeValido(nome) {
   if (typeof nome !== 'string') return null;
 
   const nomeNormalizado = nome.trim();
-  return nomeNormalizado || null;
+  return nomeNormalizado && nomeNormalizado.length <= 150 ? nomeNormalizado : null;
+}
+
+export function emailValido(email) {
+  return typeof email === 'string'
+    && email.length <= 255
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export function textosOpcionaisValidos(...valores) {

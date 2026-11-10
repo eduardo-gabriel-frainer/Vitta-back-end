@@ -7,6 +7,7 @@ import {
   normalizarTextoOpcional,
   textosOpcionaisValidos,
 } from '../validacao/validacoes.js';
+import autenticar from '../middlewares/autenticar.js';
 
 const router = Router();
 
@@ -39,6 +40,8 @@ router.get('/:id', async (req, res) => {
 
   res.json(profissional);
 });
+
+router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const { nome, email, telefone } = req.body || {};

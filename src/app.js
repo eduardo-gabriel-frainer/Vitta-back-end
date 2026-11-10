@@ -4,6 +4,7 @@ import consultas from './routes/consultas.js';
 import especialidades from './routes/especialidades.js';
 import agendas from './routes/agendas.js';
 import register from './routes/auth/register.js';
+import login from './routes/auth/login.js';
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use('/consultas', consultas);
 app.use('/especialidades', especialidades);
 app.use('/agendas', agendas);
 app.use('/register', register);
+app.use('/login', login);
 
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada' });
