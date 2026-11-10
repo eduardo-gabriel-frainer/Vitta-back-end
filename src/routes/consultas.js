@@ -58,6 +58,8 @@ function respostaConsulta(consulta) {
   };
 }
 
+router.use(autenticar);
+
 router.get('/', async (req, res) => {
   const consultas = await prisma.consultas.findMany({
     orderBy: { id: 'asc' },
@@ -76,8 +78,6 @@ router.get('/:id', async (req, res) => {
 
   res.json(respostaConsulta(consulta));
 });
-
-router.use(autenticar);
 
 router.post('/', async (req, res) => {
   try {
@@ -104,7 +104,6 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
     }
 
-    // Cria a consulta no banco usando o seu schema original
     const consulta = await prisma.consultas.create({
       data: {
         paciente_id,
@@ -116,12 +115,11 @@ router.post('/', async (req, res) => {
         criado_em: dataAtualUtc(),
       },
       include: {
-        profissional: true,    // Traz os dados do profissional para o e-mail
-        especialidade: true,   // Traz os dados da especialidade para o e-mail
+        profissional: true,
+        especialidade: true,
       }
     });
 
-    // 2. Adiciona o envio do e-mail na fila (se o e-mail do paciente foi informado)
     if (pacienteEmail) {
       await emailQueue.add('enviar-confirmacao', {
         destinatario: pacienteEmail,

@@ -5,6 +5,8 @@ import autenticar from '../middlewares/autenticar.js';
 
 const router = Router();
 
+router.use(autenticar);
+
 router.get('/', async (req, res) => {
   const especialidades = await prisma.especialidades.findMany({
     orderBy: { id: 'asc' },
@@ -23,8 +25,6 @@ router.get('/:id', async (req, res) => {
 
   res.json(especialidade);
 });
-
-router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const { nome } = req.body || {};

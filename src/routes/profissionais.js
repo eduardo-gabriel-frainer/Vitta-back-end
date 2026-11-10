@@ -18,6 +18,8 @@ const incluirEspecialidades = {
   },
 };
 
+router.use(autenticar);
+
 router.get('/', async (req, res) => {
   const profissionais = await prisma.profissionais.findMany({
     orderBy: { id: 'asc' },
@@ -40,8 +42,6 @@ router.get('/:id', async (req, res) => {
 
   res.json(profissional);
 });
-
-router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const { nome, email, telefone } = req.body || {};

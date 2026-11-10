@@ -56,6 +56,8 @@ async function consultasContinuamDisponiveis({
       agendaContemConsulta(agenda, consulta.inicio_em, consulta.fim_em)));
 }
 
+router.use(autenticar);
+
 router.get('/', async (req, res) => {
   const filtros = filtrosAgendaValidos(req.query);
   if (filtros.erro) return res.status(400).json({ erro: filtros.erro });
@@ -76,8 +78,6 @@ router.get('/:id', async (req, res) => {
 
   res.json(agenda);
 });
-
-router.use(autenticar);
 
 router.post('/', async (req, res) => {
   const dados = dadosAgendaValidos(req.body);
