@@ -5,11 +5,13 @@ import especialidades from './routes/especialidades.js';
 import agendas from './routes/agendas.js';
 import register from './routes/auth/register.js';
 import login from './routes/auth/login.js';
+import horariosOcupados from './routes/horariosOcupados.js';
 
 const app = express();
 
 app.use(express.json());
 app.use('/profissionais', profissionais);
+app.use('/consultas/horarios-ocupados', horariosOcupados);
 app.use('/consultas', consultas);
 app.use('/especialidades', especialidades);
 app.use('/agendas', agendas);

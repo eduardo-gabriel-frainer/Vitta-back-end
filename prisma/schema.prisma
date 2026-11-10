@@ -49,17 +49,16 @@ model usuarios {
 }
 
 model agendas {
-  id              Int           @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   profissional_id Int
   data            DateTime      @db.Date
   horario_inicial DateTime      @db.Time(0)
   horario_final   DateTime      @db.Time(0)
-  criado_por      Int
+  criado_por      Int?
   criado_em       DateTime      @db.Date
   profissional    profissionais @relation(fields: [profissional_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agendas_profissionais1")
-  criador         usuarios      @relation("AgendaCriador", fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agendas_usuarios1")
+  criador         usuarios?     @relation("AgendaCriador", fields: [criado_por], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agendas_usuarios1")
 
-  @@id([id, profissional_id, criado_por])
   @@index([profissional_id], map: "fk_agendas_profissionais1_idx")
   @@index([criado_por], map: "fk_agendas_usuarios1_idx")
 }

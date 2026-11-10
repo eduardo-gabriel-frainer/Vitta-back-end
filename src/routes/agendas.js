@@ -81,12 +81,13 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const dados = dadosAgendaValidos(req.body);
-  const criadoPor = req.usuario.id;
   if (!dados) {
     return res.status(400).json({
       erro: 'Informe profissional_id, data e horários válidos',
     });
   }
+
+  const criador = req.usuario.id;
 
   const profissional = await prisma.profissionais.findUnique({
     where: { id: dados.profissional_id },
@@ -111,7 +112,7 @@ router.post('/', async (req, res) => {
   const agenda = await prisma.agendas.create({
     data: {
       ...dados,
-      criado_por: criadoPor,
+      criado_por: criador,
       criado_em: dataAtualUtc(),
     },
   });

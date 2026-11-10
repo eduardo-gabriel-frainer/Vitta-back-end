@@ -61,7 +61,17 @@ function respostaConsulta(consulta) {
 router.use(autenticar);
 
 router.get('/', async (req, res) => {
+  const where = {};
+  if (req.query.paciente_id != null) {
+    const paciente_id = Number(req.query.paciente_id);
+    if (!idPositivoValido(paciente_id)) {
+      return res.status(400).json({ erro: 'ID de paciente inválido' });
+    }
+    where.paciente_id = paciente_id;
+  }
+
   const consultas = await prisma.consultas.findMany({
+    where,
     orderBy: { id: 'asc' },
   });
   res.json(consultas.map(respostaConsulta));
@@ -162,7 +172,8 @@ router.put('/:id', async (req, res) => {
   if ((status ?? consulta.status) !== 'cancelada') {
     const erroDisponibilidade = await verificarConsultaDisponivel({
       profissional_id: consulta.profissional_id,
-      ...intervalo,
+      inicio_em: intervalo.inicioEm,
+      fim_em: intervalo.fimEm,
       excluir_consulta_id: id,
     });
     if (erroDisponibilidade === 'fora_da_agenda') {
