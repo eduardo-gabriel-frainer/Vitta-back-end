@@ -49,8 +49,7 @@ Exemplo de body para criar ou alterar:
   "profissional_id": 1,
   "data": "2026-10-28",
   "horario_inicial": "09:00",
-  "horario_final": "17:00",
-  "criado_por": 1
+  "horario_final": "17:00"
 }
 
 Os horários precisam formar um intervalo válido. Não são permitidas agendas sobrepostas
