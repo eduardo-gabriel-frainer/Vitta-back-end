@@ -24,7 +24,7 @@ export async function enviarEmailConsulta(destinatario, dadosConsulta) {
   const { medico, especialidade, data, horario } = dadosConsulta;
 
   const mailOptions = {
-    from: '"Sistema Vitta" <no-reply@vitta.com>',
+    from: '"Sistema Vitta" <no-reply@gmail.com>',
     to: destinatario,
     subject: 'Confirmação de Consulta - Vitta',
     html: `
