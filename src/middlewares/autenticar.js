@@ -5,7 +5,7 @@ export default async function autenticar(req, res, next) {
   const autorizacao = req.get('authorization') || '';
   const correspondencia = /^Bearer\s+(\S+)$/i.exec(autorizacao);
   if (!correspondencia) {
-    return res.status(401).json({ erro: 'Token ausente ou inválido' });
+    return res.status(401).json({ erro: 'Token ausente ou inválido 1' });
   }
 
   const chave = chaveJwt();
@@ -15,13 +15,13 @@ export default async function autenticar(req, res, next) {
       algorithms: ['HS256'],
     }));
   } catch {
-    return res.status(401).json({ erro: 'Token ausente ou inválido' });
+    return res.status(401).json({ erro: 'Token ausente ou inválido 2' });
   }
 
   const id = Number(payload.sub);
   if (!Number.isSafeInteger(id) || id <= 0
     || typeof payload.email !== 'string' || typeof payload.tipo !== 'string') {
-    return res.status(401).json({ erro: 'Token ausente ou inválido' });
+    return res.status(401).json({ erro: 'Token ausente ou inválido 3' });
   }
 
   req.usuario = { id, email: payload.email, tipo: payload.tipo };

@@ -1,10 +1,10 @@
-const { Queue } = require('bullmq');
+import prisma from '../lib/prisma.js';
 
-const connection = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-};
-
-const emailQueue = new Queue('email-queue', { connection });
-
-module.exports = { emailQueue, connection };
+export async function enfileirarEmail(destinatario, dadosConsulta, client = prisma) {
+  return client.email_jobs.create({
+    data: {
+      destinatario,
+      dados: dadosConsulta,
+    },
+  });
+}

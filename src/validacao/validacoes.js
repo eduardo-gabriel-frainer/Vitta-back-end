@@ -27,7 +27,7 @@ export function intervaloValido(inicio, fim) {
   const inicioEm = new Date(`${inicio}`.replace(' ', 'T') + 'Z');
   const fimEm = new Date(`${fim}`.replace(' ', 'T') + 'Z');
 
-  if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime()) || fimEm <= inicioEm) {
+  if (Number.isNaN(inicioEm.getTime()) || Number.isNaN(fimEm.getTime())) {
     return null;
   }
 

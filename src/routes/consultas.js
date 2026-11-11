@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { agendaContemConsulta } from '../validacao/agendas.js';
 import { dataAtualUtc, idPositivoValido, intervaloValido } from '../validacao/validacoes.js';
 import autenticar from '../middlewares/autenticar.js';
-import { emailQueue } from '../queues/emailQueue.js'; // 1. Importe a fila aqui
+import { enfileirarEmail } from '../queues/emailQueue.js';
 
 const router = Router();
 
@@ -81,7 +81,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em, pacienteEmail } = req.body || {};
+    const { paciente_id, profissional_id, especialidade_id, inicio_em, fim_em } = req.body || {};
 
     const ids = [paciente_id, profissional_id, especialidade_id];
     if (ids.some((id) => !idPositivoValido(id))) {
@@ -89,14 +89,17 @@ router.post('/', async (req, res) => {
     }
 
     const intervalo = intervaloValido(inicio_em, fim_em);
+
     if (!intervalo) {
       return res.status(400).json({ erro: 'Informe datas válidas e um fim posterior ao início' });
     }
 
     const erroDisponibilidade = await verificarConsultaDisponivel({
       profissional_id,
-      ...intervalo,
+      inicio_em: intervalo.inicioEm,
+      fim_em: intervalo.fimEm
     });
+
     if (erroDisponibilidade === 'fora_da_agenda') {
       return res.status(409).json({ erro: 'O horário não está disponível na agenda do profissional' });
     }
@@ -104,33 +107,39 @@ router.post('/', async (req, res) => {
       return res.status(409).json({ erro: 'Já existe uma consulta nesse horário para o profissional' });
     }
 
-    const consulta = await prisma.consultas.create({
-      data: {
-        paciente_id,
-        profissional_id,
-        especialidade_id,
-        inicio_em: intervalo.inicioEm,
-        fim_em: intervalo.fimEm,
-        status: 'agendada',
-        criado_em: dataAtualUtc(),
-      },
-      include: {
-        profissional: true,
-        especialidade: true,
-      }
-    });
-
-    if (pacienteEmail) {
-      await emailQueue.add('enviar-confirmacao', {
-        destinatario: pacienteEmail,
-        dadosConsulta: {
-          medico: consulta.profissional?.nome || 'Profissional',
-          especialidade: consulta.especialidade?.nome || 'Geral',
-          data: new Date(consulta.inicio_em).toLocaleDateString('pt-BR'),
-          horario: new Date(consulta.inicio_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        }
+    const consulta = await prisma.$transaction(async (tx) => {
+      const criada = await tx.consultas.create({
+        data: {
+          paciente_id,
+          profissional_id,
+          especialidade_id,
+          inicio_em: intervalo.inicioEm,
+          fim_em: intervalo.fimEm,
+          status: 'agendada',
+          criado_em: dataAtualUtc(),
+        },
+        include: {
+          paciente: {
+            select: { email: true },
+          },
+          profissional: true,
+          especialidade: true,
+        },
       });
-    }
+
+          console.log("PASSOU 55")
+
+      if (criada.paciente.email) {
+        await enfileirarEmail(criada.paciente.email, {
+          medico: criada.profissional?.nome || 'Profissional',
+          especialidade: criada.especialidade?.nome || 'Geral',
+          data: new Date(criada.inicio_em).toLocaleDateString('pt-BR'),
+          horario: new Date(criada.inicio_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        }, tx);
+      }
+
+      return criada;
+    });
 
     return res.location(`/consultas/${consulta.id}`).status(201).json(respostaConsulta(consulta));
 

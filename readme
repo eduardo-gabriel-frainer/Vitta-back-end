@@ -4,6 +4,13 @@
 4 - npx prisma migrate dev
 5 - npm run dev
 
+Fila de e-mails
+
+- Os e-mails de confirmação são persistidos na tabela `email_jobs` do MySQL.
+- O worker inicia junto com a API; falhas são tentadas novamente até 5 vezes.
+- Configure `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` e `EMAIL_PASS` no `.env`.
+- A migração da fila é aplicada com `npx prisma migrate dev`.
+
 (caso o npm run dev retorne "app crashed", rode o comando npx prisma generate --config prisma.config.ts)
 
 Autenticação

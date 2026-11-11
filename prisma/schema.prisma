@@ -82,3 +82,20 @@ model consultas {
   @@index([profissional_id], map: "fk_consultas_profissionais1_idx")
   @@index([especialidade_id], map: "fk_consultas_especialidades1_idx")
 }
+
+model email_jobs {
+  id              Int       @id @default(autoincrement())
+  destinatario    String    @db.VarChar(320)
+  dados           Json
+  status          String    @default("pendente") @db.VarChar(20)
+  tentativas      Int       @default(0)
+  disponivel_em   DateTime  @default(now()) @db.DateTime(3)
+  bloqueado_em    DateTime? @db.DateTime(3)
+  token_bloqueio  String?   @db.VarChar(36)
+  ultimo_erro     String?   @db.Text
+  criado_em       DateTime  @default(now()) @db.DateTime(3)
+  enviado_em      DateTime? @db.DateTime(3)
+
+  @@index([status, disponivel_em], map: "email_jobs_status_disponivel_idx")
+  @@index([status, bloqueado_em], map: "email_jobs_status_bloqueado_idx")
+}
